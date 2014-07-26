@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">BT Terminal</string>
+    <string name="activity_devicelist">Bluetooth Devices</string>
+    <string name="menu_item_connect">Scan</string>
+    <string name="button_send">Send</string>
+    <string name="toast_not_connected">Not Connected</string>
+    <string name="toast_bt_not_enabled">Bluetooth is disabled</string>
+    <string name="title_not_connected">(Not Connected)</string>
+    <string name="title_connected_to">:</string>
+    <string name="title_connecting">(Connecting...)</string>
+    <string name="title_activity_btdevicelist">Bluetooth Devices</string>
+    <string name="title_paired_devices">Paired Devices</string>
+    <string name="title_new_devices">New Devices</string>
+    <string name="button_scan">Scan</string>
+    <string name="text_no_paired_devices">No paired Devices.</string>
+    <string name="text_no_new_devices">No Devices found.</string>
+    <string name="text_scanning">Scanning...</string>
+    <string name="text_select_device">Select Device</string>
+    <string name="text_connection_failed">Unable to connect to device</string>
+</resources>
