@@ -66,6 +66,8 @@ public class BTTerminalService {
     public synchronized void startListen() {
         if (DBG) Log.d(TAG, "startListen()");
 
+        setState(STATE_NONE);
+
         if (mConnectThread != null) {
             mConnectThread.cancel();
             mConnectThread = null;
@@ -107,6 +109,31 @@ public class BTTerminalService {
         setState(STATE_CONNECTING);
     }
 
+    public synchronized void disconnect() {
+        if (DBG) Log.d(TAG, "disconnect()");
+
+        if (mState == STATE_CONNECTING) {
+            if (mConnectThread != null)
+            {
+                mConnectThread.cancel();
+                mConnectThread = null;
+            }
+        }
+
+        if (mConnectedThread != null) {
+            mConnectedThread.close();
+            mConnectedThread = null;
+        }
+
+        Message msg = mHandler.obtainMessage(BTTerminal.MSG_TOAST);
+        Bundle bundle = new Bundle();
+        bundle.putString(BTTerminal.TOAST, "Disconnected"); // TODO : replace with String resource
+        msg.setData(bundle);
+        mHandler.sendMessage(msg);
+
+        startListen();
+    }
+
     public synchronized void connected(BluetoothSocket socket, BluetoothDevice device) {
         if (DBG) Log.d(TAG, "connected()");
 
@@ -120,7 +147,7 @@ public class BTTerminalService {
             mConnectedThread = null;
         }
 
-        if (mAcceptThread == null) {
+        if (mAcceptThread != null) {
             mAcceptThread.cancel();
             mAcceptThread = null;
         }
@@ -151,7 +178,7 @@ public class BTTerminalService {
             mConnectedThread = null;
         }
 
-        if (mAcceptThread == null) {
+        if (mAcceptThread != null) {
             mAcceptThread.cancel();
             mAcceptThread = null;
         }
@@ -173,7 +200,8 @@ public class BTTerminalService {
 
     private void connectionFailed() {
         if (DBG) Log.d(TAG, "connectionFailed()");
-        setState(STATE_LISTEN);
+
+        startListen();
 
         Message msg = mHandler.obtainMessage(BTTerminal.MSG_TOAST);
         Bundle bundle = new Bundle();
@@ -184,7 +212,8 @@ public class BTTerminalService {
 
     private void connectionLost() {
         if (DBG) Log.d(TAG, "connectionLost()");
-        setState(STATE_LISTEN);
+
+        startListen();
 
         Message msg = mHandler.obtainMessage(BTTerminal.MSG_TOAST);
         Bundle bundle = new Bundle();
@@ -215,7 +244,7 @@ public class BTTerminalService {
             if (DBG) Log.d(TAG, "BEGIN AcceptThread");
             setName("AcceptThread");
 
-            BluetoothSocket socket = null;
+            BluetoothSocket socket;
 
             while (mState != STATE_CONNECTED) {
                 try {
@@ -290,7 +319,6 @@ public class BTTerminalService {
             try {
                 mmSocket.connect();
             } catch (IOException e) {
-                connectionFailed();
 
                 try {
                     mmSocket.close();
@@ -298,7 +326,8 @@ public class BTTerminalService {
                     if (DBG) Log.d (TAG, "ConnectThread run() Socket close() failed", e1);
                 }
 
-                BTTerminalService.this.startListen();
+                connectionFailed();
+
                 return;
             }
 
@@ -330,6 +359,8 @@ public class BTTerminalService {
         private final InputStream mmInStream;
         private final OutputStream mmOutStream;
 
+        private boolean mmConnected = false;
+
         public ConnectedThread(BluetoothSocket socket) {
             if (DBG) Log.d(TAG, "ConnectedThread()");
 
@@ -344,6 +375,8 @@ public class BTTerminalService {
                 if (DBG) Log.d(TAG, "Connected Thread() Socket getStream() failed", e);
             }
 
+            mmConnected = true;
+
             mmInStream = tmpIn;
             mmOutStream = tmpOut;
         }
@@ -355,13 +388,16 @@ public class BTTerminalService {
             byte[] buffer = new byte[1024];
             int bytes;
 
-            while (true) {
+            while (mmConnected) {
                 try {
                     bytes = mmInStream.read(buffer);
                     mHandler.obtainMessage(BTTerminal.MSG_READ, bytes, -1, buffer).sendToTarget();
                 } catch (IOException e) {
                     if (DBG) Log.d(TAG, "ConnectedThread run() inStream read() failed", e);
-                    connectionLost();
+                    if (mmConnected) {
+                        // Only report connection loss if unintentional disconnect
+                        connectionLost();
+                    }
                     break;
                 }
             }
@@ -373,16 +409,23 @@ public class BTTerminalService {
             if (DBG) Log.d(TAG, "ConnectedThread write()");
             try {
                 mmOutStream.write(buffer);
-                if (DBG) Log.d(TAG, "OutStream written");
                 mHandler.obtainMessage(BTTerminal.MSG_WRITE, -1, -1, buffer).sendToTarget();
-                if (DBG) Log.d(TAG, "Message sent");
             } catch (IOException e) {
                 if (DBG) Log.d(TAG, "ConnectedThread write() outStream write() failed", e);
             }
         }
 
+        public void close() {
+            if (DBG) Log.d(TAG, "ConnectedThread close()");
+
+            mmConnected = false;
+
+            cancel();
+        }
+
         public void cancel() {
             if (DBG) Log.d(TAG, "ConnectedThread cancel()");
+
             try {
                 mmSocket.close();
             } catch (IOException e) {

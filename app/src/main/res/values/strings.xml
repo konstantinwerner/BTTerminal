@@ -3,7 +3,9 @@
 
     <string name="app_name">BT Terminal</string>
     <string name="activity_devicelist">Bluetooth Devices</string>
-    <string name="menu_item_connect">Scan</string>
+    <string name="menu_item_connect">Connect</string>
+    <string name="menu_item_disconnect">Disconnect</string>
+    <string name="menu_item_clear">Clear</string>
     <string name="button_send">Send</string>
     <string name="toast_not_connected">Not Connected</string>
     <string name="toast_bt_not_enabled">Bluetooth is disabled</string>

@@ -12,7 +12,6 @@ import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.Window;
 import android.view.inputmethod.EditorInfo;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -51,7 +50,6 @@ public class BTTerminal extends Activity {
     // Class Member Variables
     private String mConnectedDeviceName = null;
     private ArrayAdapter<String> mDataArrayAdapter;
-    private StringBuffer mOutStringBuffer;
     private BluetoothAdapter mBluetoothAdapter = null;
     private BTTerminalService mTerminalService;
 
@@ -68,7 +66,6 @@ public class BTTerminal extends Activity {
             if (DBG) Log.d(TAG, "No Bluetooth");
             Toast.makeText(this, "Bluetooth is unavailable", Toast.LENGTH_LONG).show();
             finish();
-            return;
         }
     }
 
@@ -167,8 +164,7 @@ public class BTTerminal extends Activity {
             byte[] send = data.getBytes();
             mTerminalService.write(send);
 
-            mOutStringBuffer.setLength(0);
-            mDataOutEdit.setText(mOutStringBuffer);
+            mDataOutEdit.setText("");
         }
     }
 
@@ -225,20 +221,23 @@ public class BTTerminal extends Activity {
                         case BTTerminalService.STATE_LISTEN:
                         case BTTerminalService.STATE_NONE:
                             title += getResources().getText(R.string.title_not_connected);
+
                             getActionBar().setTitle(title);
                             break;
                     }
                     break;
 
                 case MSG_WRITE:
-                    if (DBG) Log.d(TAG, "MSG_WRITE: " + msg.obj.toString());
+                    if (DBG) Log.d(TAG, "MSG_WRITE");
+
                     byte[] outBuf = (byte[]) msg.obj;
                     String outMsg = new String(outBuf);
                     mDataArrayAdapter.add("> " + outMsg);
                     break;
 
                 case MSG_READ:
-                    if (DBG) Log.d(TAG, "MSG_READ: " + msg.obj.toString());
+                    if (DBG) Log.d(TAG, "MSG_READ");
+
                     byte[] inBuf = (byte[]) msg.obj;
                     String inMsg = new String(inBuf);
                     mDataArrayAdapter.add("< " + inMsg);
@@ -270,8 +269,36 @@ public class BTTerminal extends Activity {
                 Intent scanIntent = new Intent(this, BTDeviceList.class);
                 startActivityForResult(scanIntent, REQ_CONNECT_DEVICE);
                 return true;
+
+            case R.id.action_disconnect:
+                mTerminalService.disconnect();
+                return true;
+
+            case R.id.action_clear:
+                mDataArrayAdapter.clear();
+                return true;
         }
 
         return false;
     }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        int state = mTerminalService.getState();
+
+        switch (state) {
+            case BTTerminalService.STATE_CONNECTING:
+            case BTTerminalService.STATE_CONNECTED:
+                menu.findItem(R.id.action_connect).setVisible(false);
+                menu.findItem(R.id.action_disconnect).setVisible(true);
+                break;
+            case BTTerminalService.STATE_NONE:
+            case BTTerminalService.STATE_LISTEN:
+                menu.findItem(R.id.action_connect).setVisible(true);
+                menu.findItem(R.id.action_disconnect).setVisible(false);
+                break;
+        }
+        return true;
+    }
+
 }
