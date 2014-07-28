@@ -15,9 +15,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.UUID;
 
-public class BTTerminalService {
+public class BTConnectionService {
     // Debug
-    private static final String TAG = "BTTerminalService";
+    private static final String TAG = "BTConnectionService";
     private static final boolean DBG = true;
 
     // Name for SDP record for Server Socket
@@ -27,13 +27,13 @@ public class BTTerminalService {
     private static final UUID SPP_UUID = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb");
 
     // Connection States
-
     public static final int STATE_NONE = 0;
     public static final int STATE_LISTEN = 1;
     public static final int STATE_CONNECTING = 2;
     public static final int STATE_CONNECTED = 3;
 
     // Member Variables
+    private final Context mContext;
     private final BluetoothAdapter mBluetoothAdapter;
     private final Handler mHandler;
     private AcceptThread mAcceptThread;
@@ -41,11 +41,13 @@ public class BTTerminalService {
     private ConnectedThread mConnectedThread;
     private int mState;
 
-    public BTTerminalService(Context context, Handler handler) {
-        if (DBG) Log.d(TAG, "BTTerminalService()");
+    public BTConnectionService(Context context, Handler handler) {
+        if (DBG) Log.d(TAG, "BTConnectionService()");
 
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         mState = STATE_NONE;
+
+        mContext = context;
         mHandler = handler;
     }
 
@@ -127,7 +129,7 @@ public class BTTerminalService {
 
         Message msg = mHandler.obtainMessage(BTTerminal.MSG_TOAST);
         Bundle bundle = new Bundle();
-        bundle.putString(BTTerminal.TOAST, "Disconnected"); // TODO : replace with String resource
+        bundle.putString(BTTerminal.TOAST, mContext.getString(R.string.toast_disconnected));
         msg.setData(bundle);
         mHandler.sendMessage(msg);
 
@@ -205,7 +207,7 @@ public class BTTerminalService {
 
         Message msg = mHandler.obtainMessage(BTTerminal.MSG_TOAST);
         Bundle bundle = new Bundle();
-        bundle.putString(BTTerminal.TOAST, "Unable to connect to device"); // TODO : replace with String resource
+        bundle.putString(BTTerminal.TOAST, mContext.getString(R.string.toast_unable_to_connect));
         msg.setData(bundle);
         mHandler.sendMessage(msg);
     }
@@ -217,7 +219,7 @@ public class BTTerminalService {
 
         Message msg = mHandler.obtainMessage(BTTerminal.MSG_TOAST);
         Bundle bundle = new Bundle();
-        bundle.putString(BTTerminal.TOAST, "Connection to Device was lost");  // TODO : replace with String resource
+        bundle.putString(BTTerminal.TOAST, mContext.getString(R.string.toast_lost_connection));
         msg.setData(bundle);
         mHandler.sendMessage(msg);
     }
@@ -255,7 +257,7 @@ public class BTTerminalService {
                 }
 
                 if (socket != null) {
-                    synchronized (BTTerminalService.this) {
+                    synchronized (BTConnectionService.this) {
                         switch (mState) {
                             case STATE_LISTEN:
                             case STATE_CONNECTING:
@@ -332,7 +334,7 @@ public class BTTerminalService {
             }
 
             // Reset ConnectThread
-            synchronized (BTTerminalService.this) {
+            synchronized (BTConnectionService.this) {
                 mConnectThread = null;
             }
 
@@ -385,11 +387,12 @@ public class BTTerminalService {
             if (DBG) Log.d(TAG, "BEGIN ConnectedThread");
             setName("ConnectedThread");
 
-            byte[] buffer = new byte[1024];
+            byte[] buffer;
             int bytes;
 
             while (mmConnected) {
                 try {
+                    buffer = new byte[1024];
                     bytes = mmInStream.read(buffer);
                     mHandler.obtainMessage(BTTerminal.MSG_READ, bytes, -1, buffer).sendToTarget();
                 } catch (IOException e) {

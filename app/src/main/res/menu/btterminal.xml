@@ -19,4 +19,10 @@
         android:title="@string/menu_item_clear"
         android:orderInCategory="300"
         android:showAsAction="never" />
+
+    <item android:id="@+id/action_echo"
+        android:title="@string/menu_item_echo"
+        android:orderInCategory="400"
+        android:showAsAction="never"
+        android:checkable="true" />
 </menu>
