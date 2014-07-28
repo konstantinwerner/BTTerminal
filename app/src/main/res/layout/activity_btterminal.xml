@@ -37,6 +37,7 @@
             android:background="#303030"
             android:typeface="monospace"
             android:paddingLeft="5dp"
+            android:inputType="textMultiLine"
             />
 
         <Button

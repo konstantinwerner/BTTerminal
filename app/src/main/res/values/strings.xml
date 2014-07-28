@@ -7,6 +7,7 @@
     <string name="menu_item_disconnect">Disconnect</string>
     <string name="menu_item_clear">Clear</string>
     <string name="menu_item_echo">Local Echo</string>
+    <string name="menu_item_listen">Listen</string>
     <string name="button_send">Send</string>
     <string name="toast_no_bt">Bluetooth is unavailable</string>
     <string name="toast_not_connected">Not Connected</string>
@@ -14,16 +15,16 @@
     <string name="toast_disconnected">Disconnected</string>
     <string name="toast_unable_to_connect">Unable to connect to device</string>
     <string name="toast_lost_connection">Connection to device was lost</string>
-    <string name="title_not_connected">(Not Connected - Listening)</string>
+    <string name="title_not_connected">(Not Connected)</string>
+    <string name="title_listening">(Not Connected - Listening&#8230;)</string>
     <string name="title_connected_to">Connected to </string>
-    <string name="title_connecting">(Connecting...)</string>
+    <string name="title_connecting">(Connecting&#8230;)</string>
     <string name="title_activity_btdevicelist">Bluetooth Devices</string>
     <string name="title_paired_devices">Paired Devices</string>
     <string name="title_new_devices">New Devices</string>
     <string name="button_scan">Scan</string>
     <string name="text_no_paired_devices">No paired Devices.</string>
     <string name="text_no_new_devices">No Devices found.</string>
-    <string name="text_scanning">Scanning...</string>
+    <string name="text_scanning">Scanning&#8230;</string>
     <string name="text_select_device">Select Device</string>
-    <string name="text_connection_failed">Unable to connect to device</string>
 </resources>

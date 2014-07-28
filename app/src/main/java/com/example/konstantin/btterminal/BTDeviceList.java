@@ -29,7 +29,7 @@ public class BTDeviceList extends Activity {
     private static final boolean DBG = true;
 
     // Return Intent Extra
-    public static String EXTRA_DEVICE_ADDRESS = "device_address";
+    public static final String EXTRA_DEVICE_ADDRESS = "device_address";
 
     // Member Variables
     private BluetoothAdapter mBluetoothAdapter;
@@ -101,7 +101,7 @@ public class BTDeviceList extends Activity {
         this.unregisterReceiver(mReceiver);
     }
 
-    private AdapterView.OnItemClickListener mDeviceClickListener = new AdapterView.OnItemClickListener() {
+    private final AdapterView.OnItemClickListener mDeviceClickListener = new AdapterView.OnItemClickListener() {
         public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
             mBluetoothAdapter.cancelDiscovery();
 
@@ -117,7 +117,7 @@ public class BTDeviceList extends Activity {
         }
     };
 
-    private AdapterView.OnItemLongClickListener mDeviceLongClickListener = new AdapterView.OnItemLongClickListener() {
+    private final AdapterView.OnItemLongClickListener mDeviceLongClickListener = new AdapterView.OnItemLongClickListener() {
         public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
             mBluetoothAdapter.cancelDiscovery();
 

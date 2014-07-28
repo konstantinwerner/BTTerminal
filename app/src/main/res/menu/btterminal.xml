@@ -25,4 +25,10 @@
         android:orderInCategory="400"
         android:showAsAction="never"
         android:checkable="true" />
+
+    <item android:id="@+id/action_listen"
+        android:title="@string/menu_item_listen"
+        android:orderInCategory="500"
+        android:showAsAction="never"
+        android:checkable="true" />
 </menu>

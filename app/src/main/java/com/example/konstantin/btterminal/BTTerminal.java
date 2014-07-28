@@ -50,6 +50,7 @@ public class BTTerminal extends Activity {
     private BluetoothAdapter mBluetoothAdapter = null;
     private BTConnectionService mTerminalService;
     private boolean mLocalEcho;
+    private boolean mListen;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -87,7 +88,7 @@ public class BTTerminal extends Activity {
 
         if (mTerminalService != null) {
             if (mTerminalService.getState() == BTConnectionService.STATE_NONE) {
-                mTerminalService.startListen();
+                mTerminalService.listen(mListen);
             }
         }
     }
@@ -120,6 +121,7 @@ public class BTTerminal extends Activity {
         mDataTextView = (TextView) findViewById(R.id.text_data);
 
         mLocalEcho = false;
+        mListen = false;
 
         // Init Input Textfield
         mDataOutEdit = (EditText) findViewById(R.id.edit_data_out);
@@ -202,27 +204,25 @@ public class BTTerminal extends Activity {
 
                     switch (msg.arg1) {
                         case BTConnectionService.STATE_CONNECTED:
-                            subtitle = getResources().getText(R.string.title_connected_to) +
-                                     " " +
-                                     mConnectedDeviceName;
-                            getActionBar().setSubtitle(subtitle);
-
+                            subtitle = getResources().getText(R.string.title_connected_to) + " " + mConnectedDeviceName;
                             mDataTextView.setText("");
                             break;
 
                         case BTConnectionService.STATE_CONNECTING:
                             subtitle = getResources().getText(R.string.title_connecting).toString();
-                            getActionBar().setSubtitle(subtitle);
                             break;
 
                         case BTConnectionService.STATE_LISTEN:
+                            subtitle = getResources().getText(R.string.title_listening).toString();
+                            break;
+
+                        default:
                         case BTConnectionService.STATE_NONE:
                             subtitle = getResources().getText(R.string.title_not_connected).toString();
-
-                            getActionBar().setSubtitle(subtitle);
-
                             break;
                     }
+
+                    getActionBar().setSubtitle(subtitle);
                     break;
 
                 case MSG_WRITE:
@@ -283,6 +283,11 @@ public class BTTerminal extends Activity {
                 mLocalEcho = !mLocalEcho;
                 return true;
 
+            case R.id.action_listen:
+                mListen = !mListen;
+                mTerminalService.listen(mListen);
+                return true;
+
             default:
                 return super.onOptionsItemSelected(item);
         }
@@ -290,23 +295,28 @@ public class BTTerminal extends Activity {
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
-        int state = mTerminalService.getState();
+        if (mTerminalService != null) {
+            int state = mTerminalService.getState();
 
-        switch (state) {
-            case BTConnectionService.STATE_CONNECTING:
-            case BTConnectionService.STATE_CONNECTED:
-                menu.findItem(R.id.action_connect).setVisible(false);
-                menu.findItem(R.id.action_disconnect).setVisible(true);
-                break;
+            switch (state) {
+                case BTConnectionService.STATE_CONNECTING:
+                case BTConnectionService.STATE_CONNECTED:
+                    menu.findItem(R.id.action_connect).setVisible(false);
+                    menu.findItem(R.id.action_disconnect).setVisible(true);
+                    menu.findItem(R.id.action_listen).setVisible(false);
+                    break;
 
-            case BTConnectionService.STATE_NONE:
-            case BTConnectionService.STATE_LISTEN:
-                menu.findItem(R.id.action_connect).setVisible(true);
-                menu.findItem(R.id.action_disconnect).setVisible(false);
-                break;
+                case BTConnectionService.STATE_NONE:
+                case BTConnectionService.STATE_LISTEN:
+                    menu.findItem(R.id.action_connect).setVisible(true);
+                    menu.findItem(R.id.action_disconnect).setVisible(false);
+                    menu.findItem(R.id.action_listen).setVisible(true);
+                    break;
+            }
         }
 
         menu.findItem(R.id.action_echo).setChecked(mLocalEcho);
+        menu.findItem(R.id.action_listen).setChecked(mListen);
 
         return true;
     }

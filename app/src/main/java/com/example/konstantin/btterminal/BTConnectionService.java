@@ -40,12 +40,14 @@ public class BTConnectionService {
     private ConnectThread mConnectThread;
     private ConnectedThread mConnectedThread;
     private int mState;
+    private boolean mListening;
 
     public BTConnectionService(Context context, Handler handler) {
         if (DBG) Log.d(TAG, "BTConnectionService()");
 
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         mState = STATE_NONE;
+        mListening = false;
 
         mContext = context;
         mHandler = handler;
@@ -65,27 +67,37 @@ public class BTConnectionService {
         return mState;
     }
 
-    public synchronized void startListen() {
-        if (DBG) Log.d(TAG, "startListen()");
+    public synchronized void listen(boolean enable) {
+        if (DBG) Log.d(TAG, "listen(" + enable + ")");
 
         setState(STATE_NONE);
 
-        if (mConnectThread != null) {
-            mConnectThread.cancel();
-            mConnectThread = null;
-        }
+        mListening = enable;
 
-        if (mConnectedThread != null) {
-            mConnectedThread.cancel();
-            mConnectedThread = null;
-        }
+        if (enable) {
 
-        if (mAcceptThread == null) {
-            mAcceptThread = new AcceptThread();
-            mAcceptThread.start();
-        }
+            if (mConnectThread != null) {
+                mConnectThread.cancel();
+                mConnectThread = null;
+            }
 
-        setState(STATE_LISTEN);
+            if (mConnectedThread != null) {
+                mConnectedThread.cancel();
+                mConnectedThread = null;
+            }
+
+            if (mAcceptThread == null) {
+                mAcceptThread = new AcceptThread();
+                mAcceptThread.start();
+            }
+
+            setState(STATE_LISTEN);
+        } else {
+            if (mAcceptThread != null) {
+                mAcceptThread.cancel();
+                mAcceptThread = null;
+            }
+        }
     }
 
     public synchronized void connect(BluetoothDevice device) {
@@ -133,7 +145,7 @@ public class BTConnectionService {
         msg.setData(bundle);
         mHandler.sendMessage(msg);
 
-        startListen();
+        listen(mListening);
     }
 
     public synchronized void connected(BluetoothSocket socket, BluetoothDevice device) {
@@ -203,7 +215,7 @@ public class BTConnectionService {
     private void connectionFailed() {
         if (DBG) Log.d(TAG, "connectionFailed()");
 
-        startListen();
+        listen(mListening);
 
         Message msg = mHandler.obtainMessage(BTTerminal.MSG_TOAST);
         Bundle bundle = new Bundle();
@@ -215,7 +227,7 @@ public class BTConnectionService {
     private void connectionLost() {
         if (DBG) Log.d(TAG, "connectionLost()");
 
-        startListen();
+        listen(mListening);
 
         Message msg = mHandler.obtainMessage(BTTerminal.MSG_TOAST);
         Bundle bundle = new Bundle();
