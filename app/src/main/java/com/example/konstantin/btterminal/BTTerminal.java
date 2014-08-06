@@ -16,7 +16,6 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-
 public class BTTerminal extends Activity {
 
     // Debug
@@ -29,8 +28,9 @@ public class BTTerminal extends Activity {
     private Button mSendButton;
 
     // Class Member Variables
-    private String mConnectedDeviceName = null;
-    private BTConnectionService mTerminalService;
+    private BTConnection mBTConnection;
+
+    private String mConnectedDeviceName;
     private boolean mLocalEcho;
     private boolean mListen;
 
@@ -41,9 +41,9 @@ public class BTTerminal extends Activity {
 
         setContentView(R.layout.activity_btterminal);
 
-        mTerminalService = new BTConnectionService(this, mHandler);
+        mBTConnection = new BTConnection(this, mBTHandler);
 
-        if (!mTerminalService.isAvailable()) {
+        if (!mBTConnection.isAvailable()) {
             if (DBG) Log.d(TAG, "No Bluetooth");
             Toast.makeText(this, R.string.toast_no_bt, Toast.LENGTH_LONG).show();
             finish();
@@ -57,8 +57,8 @@ public class BTTerminal extends Activity {
         super.onStart();
         if (DBG) Log.d(TAG, "onStart()");
 
-        if (!mTerminalService.isEnabled()) {
-            mTerminalService.setEnabled(true);
+        if (!mBTConnection.isEnabled()) {
+            mBTConnection.setEnabled(true);
         }
     }
 
@@ -67,9 +67,9 @@ public class BTTerminal extends Activity {
         super.onResume();
         if (DBG) Log.d(TAG, "onResume()");
 
-        if (mTerminalService != null) {
-            if (mTerminalService.getState() == BTConnectionService.STATE_NONE) {
-                mTerminalService.listen(mListen);
+        if (mBTConnection != null) {
+            if (mBTConnection.getState() == BTConnection.STATE_NONE) {
+                mBTConnection.listen(mListen);
             }
         }
     }
@@ -92,15 +92,13 @@ public class BTTerminal extends Activity {
     public void onDestroy() {
         if (DBG) Log.d(TAG, "onDestroy()");
 
-        if (mTerminalService != null) {
-            mTerminalService.setEnabled(false);
-            mTerminalService.stop();
+        if (mBTConnection != null) {
+            mBTConnection.setEnabled(false);
+            mBTConnection.stop();
         }
 
         super.onDestroy();
     }
-
-//##################################################################################################
 
     private void setupTerminal() {
         if (DBG) Log.d(TAG, "setupTerminal()");
@@ -139,14 +137,14 @@ public class BTTerminal extends Activity {
     private void sendData(String data) {
         if (DBG) Log.d(TAG, "sendData(" + data + ")");
 
-        if (mTerminalService.getState() != BTConnectionService.STATE_CONNECTED) {
+        if (mBTConnection.getState() != BTConnection.STATE_CONNECTED) {
             Toast.makeText(this, R.string.toast_not_connected, Toast.LENGTH_SHORT).show();
             return;
         }
 
         if (data.length() > 0) {
             byte[] send = data.getBytes();
-            mTerminalService.write(send);
+            mBTConnection.write(send);
 
             mDataOutEdit.setText("");
         }
@@ -155,43 +153,42 @@ public class BTTerminal extends Activity {
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (DBG) Log.d(TAG, "onActivityResult(" + resultCode + ")");
 
-        mTerminalService.onActivityResult(requestCode, resultCode, data);
+        mBTConnection.onActivityResult(requestCode, resultCode, data);
 
-        if (!mTerminalService.isEnabled()) {
+        if (!mBTConnection.isEnabled()) {
             if (DBG) Log.d(TAG, "BlueTooth not enabled!");
             Toast.makeText(this, R.string.toast_bt_not_enabled, Toast.LENGTH_SHORT).show();
             finish();
         }
     }
 
-    private final Handler mHandler = new Handler() {
+    private final Handler mBTHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
-
             if (DBG) Log.d(TAG, "handleMessage(" + msg.what + ", " + msg.arg1 + ", " + msg.arg2 + ")");
 
             switch (msg.what) {
-                case BTConnectionService.MSG_STATE_CHANGE:
+                case BTConnection.MSG_STATE_CHANGE:
                     if (DBG) Log.d(TAG, "MSG_STATE_CHANGE: " + msg.arg1);
 
                     String subtitle;
 
                     switch (msg.arg1) {
-                        case BTConnectionService.STATE_CONNECTED:
+                        case BTConnection.STATE_CONNECTED:
                             subtitle = getResources().getText(R.string.title_connected_to) + " " + mConnectedDeviceName;
                             mDataTextView.setText("");
                             break;
 
-                        case BTConnectionService.STATE_CONNECTING:
+                        case BTConnection.STATE_CONNECTING:
                             subtitle = getResources().getText(R.string.title_connecting).toString();
                             break;
 
-                        case BTConnectionService.STATE_LISTEN:
+                        case BTConnection.STATE_LISTEN:
                             subtitle = getResources().getText(R.string.title_listening).toString();
                             break;
 
                         default:
-                        case BTConnectionService.STATE_NONE:
+                        case BTConnection.STATE_NONE:
                             subtitle = getResources().getText(R.string.title_not_connected).toString();
                             break;
                     }
@@ -199,8 +196,8 @@ public class BTTerminal extends Activity {
                     getActionBar().setSubtitle(subtitle);
                     break;
 
-                case BTConnectionService.MSG_WRITE:
-                    if (DBG) Log.d(TAG, "MSG_WRITE");
+                case BTConnection.MSG_DATA_WRITTEN:
+                    if (DBG) Log.d(TAG, "MSG_DATA_WRITTEN");
 
                     byte[] outBuf = (byte[]) msg.obj;
                     String outMsg = new String(outBuf);
@@ -210,27 +207,26 @@ public class BTTerminal extends Activity {
                     }
                     break;
 
-                case BTConnectionService.MSG_READ:
-                    if (DBG) Log.d(TAG, "MSG_READ");
+                case BTConnection.MSG_DATA_READ:
+                    if (DBG) Log.d(TAG, "MSG_DATA_READ");
 
                     byte[] inBuf = (byte[]) msg.obj;
                     String inMsg = new String(inBuf);
                     mDataTextView.append(inMsg);
                     break;
 
-                case BTConnectionService.MSG_DEVICE_NAME:
-                    mConnectedDeviceName = msg.getData().getString(BTConnectionService.DEVICE_NAME);
+                case BTConnection.MSG_DEVICE_NAME:
+                    mConnectedDeviceName = msg.getData().getString(BTConnection.DEVICE_NAME);
                     Toast.makeText(getApplicationContext(),
                             "Connected to " + mConnectedDeviceName,
                             Toast.LENGTH_SHORT).show();
                     break;
 
-                case BTConnectionService.MSG_TOAST:
+                case BTConnection.MSG_TOAST:
                     Toast.makeText(getApplicationContext(),
-                            msg.getData().getString(BTConnectionService.TOAST),
+                            msg.getData().getString(BTConnection.TOAST),
                             Toast.LENGTH_SHORT).show();
                     break;
-
             }
         }
     };
@@ -245,11 +241,11 @@ public class BTTerminal extends Activity {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.action_connect:
-                mTerminalService.showDeviceList();
+                mBTConnection.showDeviceList();
                 return true;
 
             case R.id.action_disconnect:
-                mTerminalService.disconnect();
+                mBTConnection.disconnect();
                 return true;
 
             case R.id.action_clear:
@@ -262,7 +258,7 @@ public class BTTerminal extends Activity {
 
             case R.id.action_listen:
                 mListen = !mListen;
-                mTerminalService.listen(mListen);
+                mBTConnection.listen(mListen);
                 return true;
 
             default:
@@ -272,19 +268,19 @@ public class BTTerminal extends Activity {
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
-        if (mTerminalService != null) {
-            int state = mTerminalService.getState();
+        if (mBTConnection != null) {
+            int state = mBTConnection.getState();
 
             switch (state) {
-                case BTConnectionService.STATE_CONNECTING:
-                case BTConnectionService.STATE_CONNECTED:
+                case BTConnection.STATE_CONNECTING:
+                case BTConnection.STATE_CONNECTED:
                     menu.findItem(R.id.action_connect).setVisible(false);
                     menu.findItem(R.id.action_disconnect).setVisible(true);
                     menu.findItem(R.id.action_listen).setVisible(false);
                     break;
 
-                case BTConnectionService.STATE_NONE:
-                case BTConnectionService.STATE_LISTEN:
+                case BTConnection.STATE_NONE:
+                case BTConnection.STATE_LISTEN:
                     menu.findItem(R.id.action_connect).setVisible(true);
                     menu.findItem(R.id.action_disconnect).setVisible(false);
                     menu.findItem(R.id.action_listen).setVisible(true);
@@ -295,7 +291,7 @@ public class BTTerminal extends Activity {
         menu.findItem(R.id.action_echo).setChecked(mLocalEcho);
         menu.findItem(R.id.action_listen).setChecked(mListen);
 
-        return true;
+        return super.onPrepareOptionsMenu(menu);
     }
 
 }

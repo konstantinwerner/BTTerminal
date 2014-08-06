@@ -17,13 +17,13 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.UUID;
 
-public class BTConnectionService {
+public class BTConnection {
     // Debug
-    private static final String TAG = "BTConnectionService";
+    private static final String TAG = "BTConnection";
     private static final boolean DBG = true;
 
     // Name for SDP record for Server Socket
-    private static final String NAME = "BTTerminal";
+    private static final String NAME = "BTConnection";
 
     // Standard Serial Port UUID
     private static final UUID SPP_UUID = UUID.fromString("00001101-0000-1000-8000-00805f9b34fb");
@@ -38,9 +38,9 @@ public class BTConnectionService {
 
     // Messages from Data Transfer Handler
     public static final int MSG_STATE_CHANGE = 1;
-    public static final int MSG_READ = 2;
-    public static final int MSG_WRITE = 3;
-    public static final int MSG_DEVICE_NAME = 4;
+    public static final int MSG_DEVICE_NAME = 2;
+    public static final int MSG_DATA_READ = 3;
+    public static final int MSG_DATA_WRITTEN = 4;
     public static final int MSG_TOAST = 5;
 
     // Connection States
@@ -50,25 +50,27 @@ public class BTConnectionService {
     public static final int STATE_CONNECTED = 3;
 
     // Member Variables
-    private final Context mContext;
-    private final BluetoothAdapter mBluetoothAdapter;
-    private final Handler mHandler;
+    private Context mContext;
+    private Handler mHandler;
+    private BluetoothAdapter mBluetoothAdapter;
+
     private AcceptThread mAcceptThread;
     private ConnectThread mConnectThread;
     private ConnectedThread mConnectedThread;
     private int mState;
 
-    private boolean mListening;
-    private boolean mAvailable;
-    private boolean mEnabled;
+    private boolean mBTListening;
+    private boolean mBTAvailable;
+    private boolean mBTEnabled;
 
-    public BTConnectionService(Context context, Handler handler) {
-        if (DBG) Log.d(TAG, "BTConnectionService()");
+//-- Service Functions -----------------------------------------------------------------------------
+    public BTConnection(Context context, Handler handler) {
+        if (DBG) Log.d(TAG, "BTConnection()");
 
         mState = STATE_NONE;
-        mListening = false;
-        mAvailable = false;
-        mEnabled = false;
+        mBTListening = false;
+        mBTAvailable = false;
+        mBTEnabled = false;
 
         mContext = context;
         mHandler = handler;
@@ -76,18 +78,24 @@ public class BTConnectionService {
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
         if (mBluetoothAdapter != null) {
-            mAvailable = true;
-
-            mEnabled = mBluetoothAdapter.isEnabled();
+            mBTAvailable = true;
+            mBTEnabled = mBluetoothAdapter.isEnabled();
         }
     }
+
+    public void onDestroy() {
+        if (DBG) Log.d(TAG, "onDestroy()");
+        stop();
+    }
+
+//-- Setter/Getter Functions -----------------------------------------------------------------------------
 
     private synchronized void setState(int state) {
         if (DBG) Log.d(TAG, "setState(" + mState + " -> " + state + ")");
 
         mState = state;
+        // Send StateChange MSG to UI Activity for updating
 
-        // Sen StateChange MSG to UI Activity for updating
         mHandler.obtainMessage(MSG_STATE_CHANGE, state, -1).sendToTarget();
     }
 
@@ -97,17 +105,17 @@ public class BTConnectionService {
     }
 
     public boolean isAvailable() {
-        if (DBG) Log.d(TAG, "isAvailable() = " + mAvailable);
+        if (DBG) Log.d(TAG, "isAvailable() = " + mBTAvailable);
 
-        return mAvailable;
+        return mBTAvailable;
     }
 
     public boolean isEnabled() {
         if (DBG) Log.d(TAG, "isEnabled()");
 
-        if (mAvailable) {
-            mEnabled = mBluetoothAdapter.isEnabled();
-            return mEnabled;
+        if (mBTAvailable) {
+            mBTEnabled = mBluetoothAdapter.isEnabled();
+            return mBTEnabled;
         } else {
             return false;
         }
@@ -116,10 +124,10 @@ public class BTConnectionService {
     public void setEnabled(boolean enable) {
         if (DBG) Log.d(TAG, "setEnabled(" + enable + ")");
 
-        if (mAvailable && !mEnabled && enable) {
+        if (mBTAvailable && !mBTEnabled && enable) {
             Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
             ((Activity) mContext).startActivityForResult(enableIntent, REQ_ENABLE_BT);
-        } else if (mAvailable && mEnabled && !enable) {
+        } else if (mBTAvailable && mBTEnabled && !enable) {
             mBluetoothAdapter.disable();
         }
     }
@@ -143,9 +151,9 @@ public class BTConnectionService {
 
             case REQ_ENABLE_BT:
                 if (resultCode == Activity.RESULT_OK) {
-                    mEnabled = true;
+                    mBTEnabled = true;
                 } else {
-                    mEnabled = false;
+                    mBTEnabled = false;
                 }
         }
     }
@@ -155,7 +163,7 @@ public class BTConnectionService {
 
         setState(STATE_NONE);
 
-        mListening = enable;
+        mBTListening = enable;
 
         if (enable) {
 
@@ -222,13 +230,9 @@ public class BTConnectionService {
             mConnectedThread = null;
         }
 
-        Message msg = mHandler.obtainMessage(MSG_TOAST);
-        Bundle bundle = new Bundle();
-        bundle.putString(TOAST, mContext.getString(R.string.toast_disconnected));
-        msg.setData(bundle);
-        mHandler.sendMessage(msg);
+        makeToast(mContext.getString(R.string.toast_disconnected));
 
-        listen(mListening);
+        listen(mBTListening);
     }
 
     public synchronized void connected(BluetoothSocket socket, BluetoothDevice device) {
@@ -295,28 +299,28 @@ public class BTConnectionService {
         ct.write(data);
     }
 
+    private void makeToast(String text) {
+        Message msg = mHandler.obtainMessage(MSG_TOAST);
+        Bundle bundle = new Bundle();
+        bundle.putString(TOAST, text);
+        msg.setData(bundle);
+        mHandler.sendMessage(msg);
+    }
+
     private void connectionFailed() {
         if (DBG) Log.d(TAG, "connectionFailed()");
 
-        listen(mListening);
+        listen(mBTListening);
 
-        Message msg = mHandler.obtainMessage(MSG_TOAST);
-        Bundle bundle = new Bundle();
-        bundle.putString(TOAST, mContext.getString(R.string.toast_unable_to_connect));
-        msg.setData(bundle);
-        mHandler.sendMessage(msg);
+        makeToast(mContext.getString(R.string.toast_unable_to_connect));
     }
 
     private void connectionLost() {
         if (DBG) Log.d(TAG, "connectionLost()");
 
-        listen(mListening);
+        listen(mBTListening);
 
-        Message msg = mHandler.obtainMessage(MSG_TOAST);
-        Bundle bundle = new Bundle();
-        bundle.putString(TOAST, mContext.getString(R.string.toast_lost_connection));
-        msg.setData(bundle);
-        mHandler.sendMessage(msg);
+        makeToast(mContext.getString(R.string.toast_lost_connection));
     }
 
 //##################################################################################################
@@ -352,7 +356,7 @@ public class BTConnectionService {
                 }
 
                 if (socket != null) {
-                    synchronized (BTConnectionService.this) {
+                    synchronized (BTConnection.this) {
                         switch (mState) {
                             case STATE_LISTEN:
                             case STATE_CONNECTING:
@@ -429,7 +433,7 @@ public class BTConnectionService {
             }
 
             // Reset ConnectThread
-            synchronized (BTConnectionService.this) {
+            synchronized (BTConnection.this) {
                 mConnectThread = null;
             }
 
@@ -489,7 +493,8 @@ public class BTConnectionService {
                 try {
                     buffer = new byte[1024];
                     bytes = mmInStream.read(buffer);
-                    mHandler.obtainMessage(MSG_READ, bytes, -1, buffer).sendToTarget();
+
+                    mHandler.obtainMessage(MSG_DATA_READ, bytes, -1, buffer).sendToTarget();
                 } catch (IOException e) {
                     if (DBG) Log.d(TAG, "ConnectedThread run() inStream read() failed", e);
                     if (mmConnected) {
@@ -507,7 +512,8 @@ public class BTConnectionService {
             if (DBG) Log.d(TAG, "ConnectedThread write()");
             try {
                 mmOutStream.write(buffer);
-                mHandler.obtainMessage(MSG_WRITE, -1, -1, buffer).sendToTarget();
+
+                mHandler.obtainMessage(MSG_DATA_WRITTEN, -1, -1, buffer).sendToTarget();
             } catch (IOException e) {
                 if (DBG) Log.d(TAG, "ConnectedThread write() outStream write() failed", e);
             }

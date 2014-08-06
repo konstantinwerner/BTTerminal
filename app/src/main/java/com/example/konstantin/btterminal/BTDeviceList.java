@@ -2,6 +2,7 @@ package com.example.konstantin.btterminal;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -20,7 +21,6 @@ import android.widget.Toast;
 
 import java.lang.reflect.Method;
 import java.util.Set;
-import java.util.UUID;
 
 
 public class BTDeviceList extends Activity {
@@ -71,18 +71,10 @@ public class BTDeviceList extends Activity {
 
         // Register IntentFilters
         IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
-        this.registerReceiver(mReceiver, filter);
-
-        filter = new IntentFilter(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
-        this.registerReceiver(mReceiver, filter);
-
-        filter = new IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
-        this.registerReceiver(mReceiver, filter);
-
-        filter = new IntentFilter(BluetoothDevice.ACTION_PAIRING_REQUEST);
-        this.registerReceiver(mReceiver, filter);
-
-        filter = new IntentFilter(BluetoothDevice.ACTION_UUID);
+        filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
+        filter.addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
+        filter.addAction(BluetoothDevice.ACTION_PAIRING_REQUEST);
+        filter.addAction(BluetoothDevice.ACTION_UUID);
         this.registerReceiver(mReceiver, filter);
 
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -168,7 +160,10 @@ public class BTDeviceList extends Activity {
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
 
                 if (device.getBondState() != BluetoothDevice.BOND_BONDED) {
-                    String entry = device.getName() + "\n" + device.getAddress();
+                    String entry = device.getName() +
+                                   " (" + getDeviceMajorClassName(device.getBluetoothClass().getMajorDeviceClass()) + ")" +
+                                   "\n" +
+                                   device.getAddress();
 
                     if (mNewDevicesArrayAdapter.getPosition(entry) == -1)
                         mNewDevicesArrayAdapter.add(entry);
@@ -214,7 +209,9 @@ public class BTDeviceList extends Activity {
 
                     Toast.makeText(getApplicationContext(), "Paired with " + device.getName(), Toast.LENGTH_SHORT).show();
 
-                    String entry = device.getName() + "\n" + device.getAddress();
+                    String entry = device.getName() +
+                            " (" + getDeviceMajorClassName(device.getBluetoothClass().getMajorDeviceClass()) + ")" +
+                            "\n" + device.getAddress();
 
                     mNewDevicesArrayAdapter.remove(entry);
                 }
@@ -235,7 +232,9 @@ public class BTDeviceList extends Activity {
         if (pairedDevices.size() > 0) {
             findViewById(R.id.title_paired_devices).setVisibility(View.VISIBLE);
             for (BluetoothDevice device : pairedDevices) {
-                mPairedDevicesArrayAdapter.add(device.getName() + "\n" + device.getAddress());
+                mPairedDevicesArrayAdapter.add(device.getName() +
+                        " (" + getDeviceMajorClassName(device.getBluetoothClass().getMajorDeviceClass()) + ")" +
+                        "\n" + device.getAddress());
             }
         } else {
             String noDevices = getResources().getText(R.string.text_no_paired_devices).toString();
@@ -257,5 +256,57 @@ public class BTDeviceList extends Activity {
         }
 
         mBluetoothAdapter.startDiscovery();
+    }
+
+    private String getServiceMajorClassName(int majorClass) {
+        switch (majorClass) {
+            case BluetoothClass.Service.AUDIO:
+                return "Audio";
+            case BluetoothClass.Service.CAPTURE:
+                return "Capture";
+            case BluetoothClass.Service.INFORMATION:
+                return "Information";
+            case BluetoothClass.Service.NETWORKING:
+                return "Networking";
+            case BluetoothClass.Service.OBJECT_TRANSFER:
+                return "Transfer";
+            case BluetoothClass.Service.POSITIONING:
+                return "Positioning";
+            case BluetoothClass.Service.RENDER:
+                return "Render";
+            case BluetoothClass.Service.TELEPHONY:
+                return "Telephony";
+            default:
+                return "Unknown";
+        }
+    }
+
+    private String getDeviceMajorClassName(int majorClass) {
+        switch (majorClass) {
+            case BluetoothClass.Device.Major.COMPUTER:
+                return "PC";
+            case BluetoothClass.Device.Major.PHONE:
+                return "Phone";
+            case BluetoothClass.Device.Major.IMAGING:
+                return "Imaging";
+            case BluetoothClass.Device.Major.NETWORKING:
+                return "Networking";
+            case BluetoothClass.Device.Major.AUDIO_VIDEO:
+                return "AV";
+            case BluetoothClass.Device.Major.HEALTH:
+                return "Health";
+            case BluetoothClass.Device.Major.PERIPHERAL:
+                return "Peripheral";
+            case BluetoothClass.Device.Major.TOY:
+                return "Toy";
+            case BluetoothClass.Device.Major.WEARABLE:
+                return "Wearable";
+            case BluetoothClass.Device.Major.MISC:
+                return "Misc";
+            case BluetoothClass.Device.Major.UNCATEGORIZED:
+                return "Uncategorized";
+            default:
+                return "Unknown";
+        }
     }
 }
